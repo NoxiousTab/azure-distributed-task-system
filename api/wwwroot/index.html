@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Azure Distributed Task Processing - Local UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem; max-width: 900px; }
+    h1 { margin-bottom: 0.25rem; }
+    h2 { margin-top: 2rem; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    select, textarea, input[type="text"] { width: 100%; padding: 0.5rem; margin-top: 0.25rem; box-sizing: border-box; }
+    textarea { min-height: 160px; font-family: monospace; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .col { flex: 1 1 260px; }
+    pre { background: #111827; color: #e5e7eb; padding: 0.75rem; border-radius: 4px; overflow-x: auto; }
+    code { font-family: monospace; }
+    .status-pill { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; text-transform: uppercase; }
+    .status-pending { background: #fbbf24; color: #1f2933; }
+    .status-processing { background: #3b82f6; color: #eff6ff; }
+    .status-completed { background: #10b981; color: #ecfdf5; }
+    .status-failed { background: #ef4444; color: #fef2f2; }
+    .result-html { border: 1px solid #e5e7eb; padding: 0.75rem; border-radius: 4px; }
+    .result-raw { margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Azure Distributed Task Processing (Local)</h1>
+  <p>This UI talks to the local API and Azure Functions worker running against Azurite.</p>
+
+  <h2>1. Submit Task</h2>
+  <div class="row">
+    <div class="col">
+      <label for="taskType">Task type</label>
+      <select id="taskType">
+        <option value="summarize">summarize</option>
+        <option value="markdown-to-html">markdown-to-html</option>
+      </select>
+
+      <label for="taskText">Input text / markdown</label>
+      <textarea id="taskText"># Sample Heading
+
+This is some **markdown** text that will be converted to HTML when you choose `markdown-to-html`, or summarized when you choose `summarize`.</textarea>
+
+      <button id="submitBtn">Submit Task</button>
+    </div>
+    <div class="col">
+      <label>Submit response</label>
+      <pre id="submitResponse"><code>Waiting for submission...</code></pre>
+    </div>
+  </div>
+
+  <h2>2. Status &amp; Result</h2>
+  <div class="row">
+    <div class="col">
+      <label for="taskIdInput">Task ID</label>
+      <input type="text" id="taskIdInput" placeholder="task id from submit response" />
+      <button id="pollBtn">Poll Status Once</button>
+      <button id="autoPollBtn">Start Auto-Poll</button>
+      <button id="stopPollBtn">Stop Auto-Poll</button>
+      <div style="margin-top: 1rem;">
+        <span>Status: </span><span id="statusPill" class="status-pill status-pending">n/a</span>
+      </div>
+    </div>
+    <div class="col">
+      <label>Status JSON</label>
+      <pre id="statusResponse"><code>Waiting for status...</code></pre>
+    </div>
+  </div>
+
+  <h2>3. Result</h2>
+  <div class="row">
+    <div class="col">
+      <label>Rendered result (if HTML)</label>
+      <div id="resultRendered" class="result-html"></div>
+    </div>
+    <div class="col">
+      <label>Raw result JSON</label>
+      <pre id="resultRaw" class="result-raw"><code>Waiting for result...</code></pre>
+    </div>
+  </div>
+
+  <script>
+    const submitBtn = document.getElementById('submitBtn');
+    const pollBtn = document.getElementById('pollBtn');
+    const autoPollBtn = document.getElementById('autoPollBtn');
+    const stopPollBtn = document.getElementById('stopPollBtn');
+    const taskTypeEl = document.getElementById('taskType');
+    const taskTextEl = document.getElementById('taskText');
+    const submitResponseEl = document.getElementById('submitResponse');
+    const taskIdInput = document.getElementById('taskIdInput');
+    const statusResponseEl = document.getElementById('statusResponse');
+    const statusPillEl = document.getElementById('statusPill');
+    const resultRenderedEl = document.getElementById('resultRendered');
+    const resultRawEl = document.getElementById('resultRaw');
+
+    let pollInterval = null;
+
+    function setStatusPill(status) {
+      const s = (status || 'n/a').toLowerCase();
+      statusPillEl.textContent = s;
+      statusPillEl.className = 'status-pill';
+      if (s === 'pending') statusPillEl.classList.add('status-pending');
+      else if (s === 'processing') statusPillEl.classList.add('status-processing');
+      else if (s === 'completed') statusPillEl.classList.add('status-completed');
+      else if (s === 'failed') statusPillEl.classList.add('status-failed');
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      const type = taskTypeEl.value;
+      const text = taskTextEl.value;
+
+      submitResponseEl.textContent = 'Submitting...';
+      resultRenderedEl.innerHTML = '';
+      resultRawEl.textContent = 'Waiting for result...';
+      setStatusPill('pending');
+
+      try {
+        const res = await fetch('/submit-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, text })
+        });
+
+        const body = await res.text();
+        submitResponseEl.textContent = body;
+
+        if (res.ok) {
+          const json = JSON.parse(body);
+          if (json.taskId) {
+            taskIdInput.value = json.taskId;
+          }
+        }
+      } catch (err) {
+        submitResponseEl.textContent = 'Error: ' + err;
+      }
+    });
+
+    async function pollStatusOnce() {
+      const taskId = taskIdInput.value.trim();
+      if (!taskId) {
+        alert('Enter a task ID first.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/status/${taskId}`);
+        const bodyText = await res.text();
+        statusResponseEl.textContent = bodyText;
+
+        if (!res.ok) {
+          setStatusPill('failed');
+          return;
+        }
+
+        const json = JSON.parse(bodyText);
+        setStatusPill(json.status || 'unknown');
+
+        if (json.status === 'completed') {
+          await fetchResult(taskId);
+        }
+      } catch (err) {
+        statusResponseEl.textContent = 'Error: ' + err;
+        setStatusPill('failed');
+      }
+    }
+
+    async function fetchResult(taskId) {
+      try {
+        const res = await fetch(`/result/${taskId}`);
+        const bodyText = await res.text();
+        resultRawEl.textContent = bodyText;
+
+        if (!res.ok) {
+          resultRenderedEl.innerHTML = '<em>Result not available.</em>';
+          return;
+        }
+
+        const json = JSON.parse(bodyText);
+        if (json.html) {
+          resultRenderedEl.innerHTML = json.html;
+        } else if (json.summary) {
+          resultRenderedEl.innerHTML = `<pre>${json.summary}</pre>`;
+        } else {
+          resultRenderedEl.innerHTML = '<em>No html/summary field present.</em>';
+        }
+      } catch (err) {
+        resultRawEl.textContent = 'Error: ' + err;
+        resultRenderedEl.innerHTML = '<em>Error fetching result.</em>';
+      }
+    }
+
+    pollBtn.addEventListener('click', pollStatusOnce);
+
+    autoPollBtn.addEventListener('click', () => {
+      if (pollInterval) return;
+      pollInterval = setInterval(pollStatusOnce, 2000);
+    });
+
+    stopPollBtn.addEventListener('click', () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    });
+  </script>
+</body>
+</html>

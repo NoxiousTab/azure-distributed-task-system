@@ -20,9 +20,10 @@ public class TaskControllerValidationTests
     {
         var taskServiceMock = new Mock<ITaskService>();
         var blobRepoMock = new Mock<IBlobStorageRepository>();
+        var queueRepoMock = new Mock<IQueueRepository>();
         var loggerMock = new Mock<ILogger<TaskController>>();
 
-        var controller = new TaskController(taskServiceMock.Object, blobRepoMock.Object, loggerMock.Object)
+        var controller = new TaskController(taskServiceMock.Object, blobRepoMock.Object, queueRepoMock.Object, loggerMock.Object)
         {
             ControllerContext = new ControllerContext
             {
@@ -40,9 +41,10 @@ public class TaskControllerValidationTests
     {
         var taskServiceMock = new Mock<ITaskService>();
         var blobRepoMock = new Mock<IBlobStorageRepository>();
+        var queueRepoMock = new Mock<IQueueRepository>();
         var loggerMock = new Mock<ILogger<TaskController>>();
 
-        var controller = new TaskController(taskServiceMock.Object, blobRepoMock.Object, loggerMock.Object)
+        var controller = new TaskController(taskServiceMock.Object, blobRepoMock.Object, queueRepoMock.Object, loggerMock.Object)
         {
             ControllerContext = new ControllerContext
             {

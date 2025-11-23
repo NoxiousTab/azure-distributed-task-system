@@ -19,6 +19,7 @@ public class TaskControllerResultTests
     {
         var taskServiceMock = new Mock<ITaskService>();
         var blobRepoMock = new Mock<IBlobStorageRepository>();
+        var queueRepoMock = new Mock<IQueueRepository>();
         var loggerMock = new Mock<ILogger<TaskController>>();
 
         var metadata = new TaskMetadata
@@ -36,7 +37,7 @@ public class TaskControllerResultTests
             .Setup(b => b.GetOutputContentAsync("task1", default))
             .ReturnsAsync("{\"taskId\":\"task1\",\"summary\":\"ok\"}");
 
-        var controller = new TaskController(taskServiceMock.Object, blobRepoMock.Object, loggerMock.Object)
+        var controller = new TaskController(taskServiceMock.Object, blobRepoMock.Object, queueRepoMock.Object, loggerMock.Object)
         {
             ControllerContext = new ControllerContext
             {

@@ -20,10 +20,16 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore
+        run: |
+          dotnet restore ./api/api.csproj
+          dotnet restore ./worker/worker.csproj
+          dotnet restore ./tests/tests.csproj
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: |
+          dotnet build ./api/api.csproj --configuration Release --no-restore
+          dotnet build ./worker/worker.csproj --configuration Release --no-restore
+          dotnet build ./tests/tests.csproj --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage"
+        run: dotnet test ./tests/tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage"

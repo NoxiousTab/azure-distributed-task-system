@@ -1,4 +1,5 @@
 export type ToolStatus = 'live' | 'soon';
+export type ResultKind = 'image' | 'pdf';
 
 export interface ToolDefinition {
   id: string;
@@ -8,6 +9,11 @@ export interface ToolDefinition {
   tagline: string;
   status: ToolStatus;
   popular?: boolean;
+  // Only present for 'live' tools - drives the upload + result flow in ToolPage.
+  accept?: string;
+  acceptHint?: string;
+  resultKind?: ResultKind;
+  downloadLabel?: string;
 }
 
 export interface CategoryDefinition {
@@ -36,6 +42,10 @@ export const tools: ToolDefinition[] = [
     tagline: 'Shrink JPGs and PNGs without losing quality.',
     status: 'live',
     popular: true,
+    accept: 'image/jpeg,image/png',
+    acceptHint: 'JPG or PNG, up to 5 MB',
+    resultKind: 'image',
+    downloadLabel: 'Download image',
   },
   {
     id: 'compress-pdf',
@@ -52,8 +62,12 @@ export const tools: ToolDefinition[] = [
     categorySlug: 'convert',
     name: 'HEIC to JPG',
     tagline: 'Turn iPhone photos into a format everything accepts.',
-    status: 'soon',
+    status: 'live',
     popular: true,
+    accept: 'image/heic,image/heif,.heic,.heif',
+    acceptHint: 'HEIC or HEIF, up to 5 MB',
+    resultKind: 'image',
+    downloadLabel: 'Download JPG',
   },
   {
     id: 'image-to-pdf',
@@ -61,8 +75,12 @@ export const tools: ToolDefinition[] = [
     categorySlug: 'convert',
     name: 'Image to PDF',
     tagline: 'Turn a photo or scan into a proper PDF.',
-    status: 'soon',
+    status: 'live',
     popular: true,
+    accept: 'image/jpeg,image/png',
+    acceptHint: 'JPG or PNG, up to 5 MB',
+    resultKind: 'pdf',
+    downloadLabel: 'Download PDF',
   },
   {
     id: 'merge-pdf',
@@ -79,7 +97,11 @@ export const tools: ToolDefinition[] = [
     categorySlug: 'documents',
     name: 'Passport photo maker',
     tagline: 'Crop and size a photo to official passport specs.',
-    status: 'soon',
+    status: 'live',
+    accept: 'image/jpeg,image/png',
+    acceptHint: 'JPG or PNG · center-cropped to 600×600px',
+    resultKind: 'image',
+    downloadLabel: 'Download photo',
   },
   {
     id: 'image-to-text',

@@ -54,6 +54,29 @@ public class TaskController : ControllerBase
         return Ok();
     }
 
+    // Tools that accept a single uploaded image/file and are processed the same way
+    // (multipart upload -> queued -> worker picks a case on the type).
+    private static readonly HashSet<string> ImageTaskTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "compress-image",
+        "heic-to-jpg",
+        "image-to-pdf",
+        "passport-photo",
+    };
+
+    private static readonly Dictionary<string, string[]> AllowedContentTypesByType = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["compress-image"] = new[] { "image/jpeg", "image/png" },
+        ["image-to-pdf"] = new[] { "image/jpeg", "image/png" },
+        ["passport-photo"] = new[] { "image/jpeg", "image/png" },
+        // Browsers are inconsistent about the content-type they report for HEIC files -
+        // some send image/heic, others fall back to application/octet-stream. The
+        // filename extension check below is the more reliable signal for this one.
+        ["heic-to-jpg"] = new[] { "image/heic", "image/heif", "application/octet-stream" },
+    };
+
+    private static readonly string[] HeicExtensions = { ".heic", ".heif" };
+
     [HttpPost("submit-image-task")]
     [RequestSizeLimit(5 * 1024 * 1024)]
     public async Task<ActionResult<SubmitTaskResponse>> SubmitImageTask([FromForm] string type, [FromForm] IFormFile file, CancellationToken cancellationToken)
@@ -64,14 +87,14 @@ public class TaskController : ControllerBase
         }
 
         var normalizedType = type.Trim().ToLowerInvariant();
-        if (normalizedType != "compress-image")
+        if (!ImageTaskTypes.Contains(normalizedType))
         {
-            return BadRequest("Unsupported task type for image submission. Only 'compress-image' is allowed.");
+            return BadRequest($"Unsupported task type for image submission. Supported types: {string.Join(", ", ImageTaskTypes)}.");
         }
 
         if (file is null || file.Length == 0)
         {
-            return BadRequest("Image file is required.");
+            return BadRequest("A file is required.");
         }
 
         if (file.Length > 5 * 1024 * 1024)
@@ -79,9 +102,14 @@ public class TaskController : ControllerBase
             return BadRequest("Maximum file size is 5MB.");
         }
 
-        if (file.ContentType is not "image/jpeg" and not "image/png")
+        var allowedContentTypes = AllowedContentTypesByType[normalizedType];
+        var hasAllowedContentType = allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase);
+        var hasAllowedExtension = normalizedType == "heic-to-jpg"
+            && HeicExtensions.Any(ext => file.FileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+
+        if (!hasAllowedContentType && !hasAllowedExtension)
         {
-            return BadRequest("Only JPEG and PNG images are supported.");
+            return BadRequest("That file doesn't match what this tool expects.");
         }
 
         var taskId = Guid.NewGuid().ToString("N");
@@ -221,6 +249,31 @@ public class TaskController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while retrieving compressed image");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    [HttpGet("pdf/{taskId}")]
+    public async Task<IActionResult> GetGeneratedPdf(string taskId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(taskId))
+        {
+            return BadRequest("taskId is required.");
+        }
+
+        try
+        {
+            var bytes = await _blobRepository.GetGeneratedPdfBytesAsync(taskId, cancellationToken);
+            if (bytes == null)
+            {
+                return NotFound();
+            }
+
+            return File(bytes, "application/pdf");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving generated PDF");
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

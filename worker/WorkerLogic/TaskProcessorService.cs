@@ -1,12 +1,16 @@
 using System.Text.Json;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using AzureDistributedTaskSystem.Worker.Models;
+using ImageMagick;
 using Markdig;
 using Microsoft.Extensions.Logging;
+using PdfSharp.Drawing;
+using PdfSharp.Pdf;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace AzureDistributedTaskSystem.Worker.WorkerLogic;
 
@@ -151,6 +155,141 @@ public class TaskProcessorService : ITaskProcessorService
                             originalSizeBytes,
                             compressedSizeBytes,
                             compressionRatio
+                        });
+                        break;
+                    }
+                case "heic-to-jpg":
+                    {
+                        if (string.IsNullOrWhiteSpace(taskInput.Base64Image))
+                        {
+                            throw new InvalidOperationException("Base64Image must be provided for heic-to-jpg tasks.");
+                        }
+
+                        var originalBytes = Convert.FromBase64String(taskInput.Base64Image);
+                        var originalSizeBytes = originalBytes.Length;
+
+                        // ImageSharp doesn't decode HEIC (it's HEVC-based and patent-encumbered),
+                        // so this one case uses Magick.NET, which bundles a cross-platform
+                        // libheif build. Everything else in this file stays on ImageSharp.
+                        using var magickImage = new MagickImage(originalBytes);
+                        magickImage.AutoOrient();
+                        magickImage.Format = MagickFormat.Jpg;
+                        magickImage.Quality = 85;
+
+                        var convertedBytes = magickImage.ToByteArray();
+                        var compressedSizeBytes = convertedBytes.Length;
+
+                        var convertedBlobName = $"{queueMessage.TaskId}.jpg";
+                        var convertedBlobClient = outputContainer.GetBlobClient(convertedBlobName);
+                        using (var convertedStream = new MemoryStream(convertedBytes))
+                        {
+                            await convertedBlobClient.UploadAsync(convertedStream, overwrite: true, cancellationToken);
+                        }
+
+                        outputJson = JsonSerializer.Serialize(new
+                        {
+                            taskId = queueMessage.TaskId,
+                            type = normalizedType,
+                            originalSizeBytes,
+                            compressedSizeBytes
+                        });
+                        break;
+                    }
+                case "image-to-pdf":
+                    {
+                        if (string.IsNullOrWhiteSpace(taskInput.Base64Image))
+                        {
+                            throw new InvalidOperationException("Base64Image must be provided for image-to-pdf tasks.");
+                        }
+
+                        var originalBytes = Convert.FromBase64String(taskInput.Base64Image);
+                        var originalSizeBytes = originalBytes.Length;
+
+                        using var pdfDocument = new PdfDocument();
+                        var page = pdfDocument.AddPage();
+
+                        using var pdfImageStream = new MemoryStream(originalBytes);
+                        var xImage = XImage.FromStream(pdfImageStream);
+                        // Treat image pixels as points at the image's own resolution (falling
+                        // back to 96 DPI when a format doesn't carry that metadata) so the
+                        // page comes out the same proportions as the source photo/scan.
+                        var horizontalDpi = xImage.HorizontalResolution > 0 ? xImage.HorizontalResolution : 96;
+                        var verticalDpi = xImage.VerticalResolution > 0 ? xImage.VerticalResolution : 96;
+                        page.Width = XUnit.FromPoint(xImage.PixelWidth * 72.0 / horizontalDpi);
+                        page.Height = XUnit.FromPoint(xImage.PixelHeight * 72.0 / verticalDpi);
+
+                        using (var gfx = XGraphics.FromPdfPage(page))
+                        {
+                            gfx.DrawImage(xImage, 0, 0, page.Width.Point, page.Height.Point);
+                        }
+
+                        byte[] pdfBytes;
+                        using (var pdfStream = new MemoryStream())
+                        {
+                            pdfDocument.Save(pdfStream, false);
+                            pdfBytes = pdfStream.ToArray();
+                        }
+
+                        var pdfBlobName = $"{queueMessage.TaskId}.pdf";
+                        var pdfBlobClient = outputContainer.GetBlobClient(pdfBlobName);
+                        using (var pdfUploadStream = new MemoryStream(pdfBytes))
+                        {
+                            await pdfBlobClient.UploadAsync(pdfUploadStream, overwrite: true, cancellationToken);
+                        }
+
+                        outputJson = JsonSerializer.Serialize(new
+                        {
+                            taskId = queueMessage.TaskId,
+                            type = normalizedType,
+                            originalSizeBytes,
+                            compressedSizeBytes = pdfBytes.Length
+                        });
+                        break;
+                    }
+                case "passport-photo":
+                    {
+                        if (string.IsNullOrWhiteSpace(taskInput.Base64Image))
+                        {
+                            throw new InvalidOperationException("Base64Image must be provided for passport-photo tasks.");
+                        }
+
+                        const int passportPhotoSizePx = 600;
+
+                        var originalBytes = Convert.FromBase64String(taskInput.Base64Image);
+                        var originalSizeBytes = originalBytes.Length;
+
+                        using var passportInputStream = new MemoryStream(originalBytes);
+                        using var passportImage = await Image.LoadAsync(passportInputStream, cancellationToken);
+
+                        // Center-crop to a square before resizing, so the subject isn't
+                        // stretched to fit the required 1:1 passport photo aspect ratio.
+                        var squareSide = Math.Min(passportImage.Width, passportImage.Height);
+                        passportImage.Mutate(x => x
+                            .Crop(new SixLabors.ImageSharp.Rectangle(
+                                (passportImage.Width - squareSide) / 2,
+                                (passportImage.Height - squareSide) / 2,
+                                squareSide,
+                                squareSide))
+                            .Resize(passportPhotoSizePx, passportPhotoSizePx));
+
+                        using var passportOutputStream = new MemoryStream();
+                        var passportEncoder = new JpegEncoder { Quality = 90 };
+                        await passportImage.SaveAsJpegAsync(passportOutputStream, passportEncoder, cancellationToken);
+                        var passportBytes = passportOutputStream.ToArray();
+
+                        var passportBlobName = $"{queueMessage.TaskId}.jpg";
+                        var passportBlobClient = outputContainer.GetBlobClient(passportBlobName);
+                        passportOutputStream.Position = 0;
+                        await passportBlobClient.UploadAsync(passportOutputStream, overwrite: true, cancellationToken);
+
+                        outputJson = JsonSerializer.Serialize(new
+                        {
+                            taskId = queueMessage.TaskId,
+                            type = normalizedType,
+                            originalSizeBytes,
+                            compressedSizeBytes = passportBytes.Length,
+                            width = passportPhotoSizePx,
+                            height = passportPhotoSizePx
                         });
                         break;
                     }

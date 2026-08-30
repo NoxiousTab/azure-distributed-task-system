@@ -10,4 +10,5 @@ public interface IBlobStorageRepository
     Task<string?> GetOutputContentAsync(string taskId, CancellationToken cancellationToken = default);
 
     Task<byte[]?> GetCompressedImageBytesAsync(string taskId, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetGeneratedPdfBytesAsync(string taskId, CancellationToken cancellationToken = default);
 }

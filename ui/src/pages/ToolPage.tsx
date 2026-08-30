@@ -22,7 +22,7 @@ export const ToolPage: React.FC = () => {
   const [state, setState] = useState<FlowState>('idle');
   const [fileName, setFileName] = useState('');
   const [originalSize, setOriginalSize] = useState(0);
-  const [result, setResult] = useState<{ taskId: string; compressedSizeBytes: number } | null>(null);
+  const [result, setResult] = useState<{ taskId: string; outputSizeBytes: number } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const pollCount = useRef(0);
 
@@ -41,7 +41,7 @@ export const ToolPage: React.FC = () => {
           const resultData = await getResult(taskId);
           setResult({
             taskId,
-            compressedSizeBytes: Number(resultData.compressedSizeBytes ?? 0),
+            outputSizeBytes: Number(resultData.compressedSizeBytes ?? 0),
           });
           setState('done');
           return;
@@ -69,7 +69,7 @@ export const ToolPage: React.FC = () => {
   );
 
   const handleFile = useCallback(
-    async (file: File) => {
+    async (file: File, taskId: string) => {
       setFileName(file.name);
       setOriginalSize(file.size);
       setState('uploading');
@@ -77,7 +77,7 @@ export const ToolPage: React.FC = () => {
 
       try {
         const formData = new FormData();
-        formData.append('type', 'compress-image');
+        formData.append('type', taskId);
         formData.append('file', file);
         const response = await submitImageTask(formData);
         setState('processing');
@@ -95,7 +95,18 @@ export const ToolPage: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  const isLive = tool.status === 'live';
+  const isLive = tool.status === 'live' && tool.accept && tool.resultKind;
+  const downloadPrefix = tool.resultKind === 'pdf' ? 'pdf' : 'image';
+  const downloadExtension = tool.resultKind === 'pdf' ? 'pdf' : 'jpg';
+
+  const sizeChangeLabel = (before: number, after: number): string | undefined => {
+    if (before <= 0) return undefined;
+    const pctChange = (1 - after / before) * 100;
+    if (pctChange >= 0) {
+      return `saved ${pctChange.toFixed(0)}%`;
+    }
+    return `+${Math.abs(pctChange).toFixed(0)}% larger`;
+  };
 
   return (
     <div className="pt-8">
@@ -112,8 +123,8 @@ export const ToolPage: React.FC = () => {
         <div className="max-w-xl rounded-[10px] border border-line bg-panel p-8 text-center">
           <p className="mb-1 font-display text-base font-semibold text-ink">Coming soon</p>
           <p className="text-sm text-muted">
-            This tool isn&apos;t wired up yet — it&apos;ll work the same way as Compress image once it&apos;s
-            built.
+            This tool isn&apos;t wired up yet — it&apos;ll work the same way as the tools already live once
+            it&apos;s built.
           </p>
         </div>
       )}
@@ -121,11 +132,11 @@ export const ToolPage: React.FC = () => {
       {isLive && state === 'idle' && (
         <div className="max-w-xl">
           <DropZone
-            accept="image/jpeg,image/png"
-            label="Drop a JPG or PNG, or click to browse"
-            hint="Up to 5 MB"
+            accept={tool.accept!}
+            label={`Drop a file, or click to browse`}
+            hint={tool.acceptHint}
             onFileSelected={(file) => {
-              void handleFile(file);
+              void handleFile(file, tool.id);
             }}
           />
         </div>
@@ -135,7 +146,7 @@ export const ToolPage: React.FC = () => {
         <div className="flex max-w-xl flex-col items-center gap-3 rounded-[10px] border border-line bg-panel px-8 py-16 text-center">
           <LoadingSpinner size="md" />
           <p className="font-body text-sm text-muted">
-            {state === 'uploading' ? 'Uploading your file…' : `Compressing ${fileName}…`}
+            {state === 'uploading' ? 'Uploading your file…' : `Working on ${fileName}…`}
           </p>
         </div>
       )}
@@ -158,22 +169,18 @@ export const ToolPage: React.FC = () => {
         <div className="flex flex-col items-start gap-4">
           <TicketStub
             filename={fileName}
-            statLeft={`${(originalSize / 1024).toFixed(0)} KB → ${(result.compressedSizeBytes / 1024).toFixed(0)} KB`}
-            statRight={
-              originalSize > 0
-                ? `saved ${(100 - (result.compressedSizeBytes / originalSize) * 100).toFixed(0)}%`
-                : undefined
-            }
+            statLeft={`${(originalSize / 1024).toFixed(0)} KB → ${(result.outputSizeBytes / 1024).toFixed(0)} KB`}
+            statRight={sizeChangeLabel(originalSize, result.outputSizeBytes)}
             timestamp={new Date().toLocaleTimeString()}
-            downloadUrl={`${baseUrl}/image/${encodeURIComponent(result.taskId)}`}
-            downloadLabel="Download image"
+            downloadUrl={`${baseUrl}/${downloadPrefix}/${encodeURIComponent(result.taskId)}`}
+            downloadLabel={tool.downloadLabel ?? `Download .${downloadExtension}`}
           />
           <button
             type="button"
             onClick={reset}
             className="font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
           >
-            Compress another file
+            Do another file
           </button>
         </div>
       )}

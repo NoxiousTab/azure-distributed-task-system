@@ -129,4 +129,24 @@ public class BlobStorageRepository : IBlobStorageRepository
             return null;
         }
     }
+
+    public async Task<byte[]?> GetGeneratedPdfBytesAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        var container = _blobServiceClient.GetBlobContainerClient(_outputContainerName);
+        await container.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
+
+        var blobName = $"{taskId}.pdf";
+        var blobClient = container.GetBlobClient(blobName);
+
+        try
+        {
+            var download = await blobClient.DownloadContentAsync(cancellationToken);
+            return download.Value.Content.ToArray();
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            _logger.LogWarning("Generated PDF blob not found for task {TaskId}", taskId);
+            return null;
+        }
+    }
 }

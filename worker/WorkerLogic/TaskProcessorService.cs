@@ -1,6 +1,6 @@
 using System.Text.Json;
-using System.Drawing;
-using System.Drawing.Imaging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -123,24 +123,13 @@ public class TaskProcessorService : ITaskProcessorService
                         var originalSizeBytes = originalBytes.Length;
 
                         using var inputStream = new MemoryStream(originalBytes);
-                        using var image = Image.FromStream(inputStream);
+                        using var image = await Image.LoadAsync(inputStream, cancellationToken);
                         using var outputStream = new MemoryStream();
 
-                        var jpegEncoder = ImageCodecInfo.GetImageDecoders()
-                            .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
-
-                        if (jpegEncoder is null)
-                        {
-                            throw new InvalidOperationException("JPEG encoder not found.");
-                        }
-
-                        // Choose a reasonable quality for compression.
-                        long quality = 75L;
-                        using (var encoderParams = new EncoderParameters(1))
-                        {
-                            encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, quality);
-                            image.Save(outputStream, jpegEncoder, encoderParams);
-                        }
+                        // ImageSharp is fully cross-platform (no OS imaging dependency),
+                        // unlike System.Drawing.Common which only works on Windows.
+                        var jpegEncoder = new JpegEncoder { Quality = 75 };
+                        await image.SaveAsJpegAsync(outputStream, jpegEncoder, cancellationToken);
 
                         var compressedBytes = outputStream.ToArray();
                         var compressedSizeBytes = compressedBytes.Length;

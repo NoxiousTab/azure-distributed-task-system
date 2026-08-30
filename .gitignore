@@ -63,7 +63,7 @@ _ReSharper*/
 # Azure Functions / Azurite
 ############################
 # Local settings (contains secrets / connection strings)
-local.settings.json
+# local.settings.json
 
 # Azurite data
 __blobstorage__/

@@ -4,6 +4,11 @@ using AzureDistributedTaskSystem.Api.Repositories;
 using AzureDistributedTaskSystem.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+// Bind to all network interfaces, not just loopback. Without this, "localhost"
+// binding (the implicit default when no launchSettings.json / ASPNETCORE_URLS
+// is present) only accepts connections from this machine itself — unreachable
+// from a phone or another device on the same network.
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -44,10 +49,20 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow any origin so the Vite dev server can be
+            // reached from other devices on the same network (e.g. testing
+            // from a phone via `npm run dev -- --host`). This only affects
+            // the Development environment, not production.
+            policy.SetIsOriginAllowed(_ => true).AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod();
+        }
+    });
 });
 
 builder.Services.AddEndpointsApiExplorer();

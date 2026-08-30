@@ -14,11 +14,8 @@ export const useTaskApi = () => {
 
   const submitTask = useCallback(
     async (payload: SubmitTaskRequestDto): Promise<SubmitTaskResponseDto> => {
-      // NOTE: current backend only supports text-based tasks.
-      if (payload.type === 'compress-image') {
-        throw new Error('Compress Image is not yet supported by the backend.');
-      }
-
+      // NOTE: this endpoint is for text-based tasks (summarize, markdown-to-html).
+      // Image tasks go through submitImageTask below, which posts multipart form data.
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -85,6 +82,11 @@ export const useTaskApi = () => {
       } catch (err: any) {
         if (axios.isCancel(err)) {
           throw new Error('Request timed out while fetching status');
+        }
+        if (err?.response?.status === 404) {
+          // No metadata blob yet means the worker hasn't dequeued the message and
+          // started processing it. That's a normal, transient state, not a failure.
+          return { taskId, status: 'pending' };
         }
         const message = err?.response?.data ?? err?.message ?? 'Failed to fetch status';
         throw new Error(typeof message === 'string' ? message : JSON.stringify(message));

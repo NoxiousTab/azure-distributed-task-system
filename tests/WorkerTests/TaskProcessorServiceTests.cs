@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using AzureDistributedTaskSystem.Worker.WorkerLogic;
+using AzureDistributedTaskSystem.Worker.WorkerLogic.Handlers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -14,10 +15,14 @@ public class TaskProcessorServiceTests
     {
         var blobServiceMock = new Mock<BlobServiceClient>();
         var loggerMock = new Mock<ILogger<TaskProcessorService>>();
+        var handlerRegistry = new TaskHandlerRegistry([]);
 
-        var service = new TaskProcessorService(blobServiceMock.Object, loggerMock.Object);
+        var service = new TaskProcessorService(
+            blobServiceMock.Object,
+            handlerRegistry,
+            loggerMock.Object);
 
-        // message missing TaskId should be treated as invalid and simply logged, not throw
+        // Message missing TaskId should be treated as invalid and simply logged, not throw
         var invalidMessageJson = "{ \"type\": \"summarize\", \"inputBlobPath\": \"input/task1.json\" }";
 
         await service.ProcessMessageAsync(invalidMessageJson);

@@ -71,6 +71,58 @@ export const useTaskApi = () => {
     [baseUrl],
   );
 
+  const submitPdfTask = useCallback(
+    async (formData: FormData): Promise<SubmitTaskResponseDto> => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const response = await axios.post<SubmitTaskResponseDto>(`${baseUrl}/submit-pdf-task`, formData, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+        return response.data;
+      } catch (err: any) {
+        if (axios.isCancel(err)) {
+          throw new Error('Request timed out while submitting PDF task');
+        }
+        const message = err?.response?.data ?? err?.message ?? 'Failed to submit PDF task';
+        throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+    [baseUrl],
+  );
+
+  const submitMergeTask = useCallback(
+    async (formData: FormData): Promise<SubmitTaskResponseDto> => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const response = await axios.post<SubmitTaskResponseDto>(`${baseUrl}/submit-merge-task`, formData, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+        return response.data;
+      } catch (err: any) {
+        if (axios.isCancel(err)) {
+          throw new Error('Request timed out while submitting merge task');
+        }
+        const message = err?.response?.data ?? err?.message ?? 'Failed to submit merge task';
+        throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+    [baseUrl],
+  );
+
   const getStatus = useCallback(
     async (taskId: string): Promise<TaskStatusResponseDto> => {
       const controller = new AbortController();
@@ -118,5 +170,5 @@ export const useTaskApi = () => {
     [baseUrl],
   );
 
-  return { submitTask, submitImageTask, getStatus, getResult, baseUrl };
+  return { submitTask, submitImageTask, submitPdfTask, submitMergeTask, getStatus, getResult, baseUrl };
 };

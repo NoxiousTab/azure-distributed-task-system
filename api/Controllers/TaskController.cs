@@ -148,6 +148,140 @@ public class TaskController : ControllerBase
         }
     }
 
+    [HttpPost("submit-merge-task")]
+    [RequestSizeLimit(150 * 1024 * 1024)]
+    public async Task<ActionResult<SubmitTaskResponse>> SubmitMergeTask([FromForm] string type, [FromForm] List<IFormFile> files, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(type) || !type.Trim().Equals("merge-pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("type must be 'merge-pdf'.");
+        }
+
+        if (files is null || files.Count < 2)
+        {
+            return BadRequest("At least 2 PDF files are required to merge.");
+        }
+
+        if (files.Count > 10)
+        {
+            return BadRequest("Maximum 10 files per merge.");
+        }
+
+        foreach (var file in files)
+        {
+            var hasAllowedContentType = string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase);
+            var hasAllowedExtension = file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+            if (!hasAllowedContentType && !hasAllowedExtension)
+            {
+                return BadRequest($"'{file.FileName}' doesn't look like a PDF.");
+            }
+
+            if (file.Length > 50 * 1024 * 1024)
+            {
+                return BadRequest($"'{file.FileName}' is over the 50MB per-file limit.");
+            }
+        }
+
+        var taskId = Guid.NewGuid().ToString("N");
+
+        try
+        {
+            var base64Files = new List<string>(files.Count);
+            foreach (var file in files)
+            {
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms, cancellationToken);
+                base64Files.Add(Convert.ToBase64String(ms.ToArray()));
+            }
+
+            var inputBlobPath = await _blobRepository.SaveInputAsync(taskId, new
+            {
+                taskId,
+                Type = "merge-pdf",
+                Base64Files = base64Files
+            }, cancellationToken);
+
+            var queuePayload = new
+            {
+                taskId,
+                type = "merge-pdf",
+                inputBlobPath
+            };
+
+            await _queueRepository.EnqueueTaskAsync(queuePayload, cancellationToken);
+
+            _logger.LogInformation("Created merge-pdf task {TaskId} with {FileCount} files", taskId, files.Count);
+
+            return Accepted(new SubmitTaskResponse { TaskId = taskId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while creating merge-pdf task");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    [HttpPost("submit-pdf-task")]
+    [RequestSizeLimit(50 * 1024 * 1024)]
+    public async Task<ActionResult<SubmitTaskResponse>> SubmitPdfTask([FromForm] string type, [FromForm] IFormFile file, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(type) || !type.Trim().Equals("compress-pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("type must be 'compress-pdf'.");
+        }
+
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest("A file is required.");
+        }
+
+        if (file.Length > 50 * 1024 * 1024)
+        {
+            return BadRequest("Maximum file size is 50MB.");
+        }
+
+        var hasAllowedContentType = string.Equals(file.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase);
+        var hasAllowedExtension = file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+        if (!hasAllowedContentType && !hasAllowedExtension)
+        {
+            return BadRequest("That file doesn't look like a PDF.");
+        }
+
+        var taskId = Guid.NewGuid().ToString("N");
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, cancellationToken);
+            var base64Pdf = Convert.ToBase64String(ms.ToArray());
+
+            var inputBlobPath = await _blobRepository.SaveInputAsync(taskId, new
+            {
+                taskId,
+                Type = "compress-pdf",
+                Base64Pdf = base64Pdf
+            }, cancellationToken);
+
+            var queuePayload = new
+            {
+                taskId,
+                type = "compress-pdf",
+                inputBlobPath
+            };
+
+            await _queueRepository.EnqueueTaskAsync(queuePayload, cancellationToken);
+
+            _logger.LogInformation("Created compress-pdf task {TaskId}", taskId);
+
+            return Accepted(new SubmitTaskResponse { TaskId = taskId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while creating compress-pdf task");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
     [HttpGet("status/{taskId}")]
     public async Task<ActionResult<TaskStatusResponse>> GetStatus(string taskId, CancellationToken cancellationToken)
     {
@@ -244,7 +378,7 @@ public class TaskController : ControllerBase
                 return NotFound();
             }
 
-            return File(bytes, "image/jpeg");
+            return File(bytes, "image/jpeg", $"{taskId}.jpg");
         }
         catch (Exception ex)
         {
@@ -269,7 +403,7 @@ public class TaskController : ControllerBase
                 return NotFound();
             }
 
-            return File(bytes, "application/pdf");
+            return File(bytes, "application/pdf", $"{taskId}.pdf");
         }
         catch (Exception ex)
         {

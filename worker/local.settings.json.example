@@ -3,6 +3,6 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "SyncfusionLicenseKey": "Ngo9BigBOggjHTQxAR8/V1JAaF1cX2hLflFwWGNQYl53ZFRCalhSTnRaSV9jS3hTfkZiWHtac3ZQR2JcWE91Ww=="
+    "SyncfusionLicenseKey": "your-syncfusion-license-key-here"
   }
 }

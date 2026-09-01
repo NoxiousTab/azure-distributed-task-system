@@ -14,6 +14,11 @@ export interface ToolDefinition {
   acceptHint?: string;
   resultKind?: ResultKind;
   downloadLabel?: string;
+  // Which single-file endpoint this tool uses. Irrelevant when multiFile is true.
+  uploadKind?: 'image' | 'pdf';
+  // When true, this tool takes multiple files at once (e.g. merge-pdf) and
+  // uses MultiFileDropZone + submitMergeTask instead of the single-file flow.
+  multiFile?: boolean;
 }
 
 export interface CategoryDefinition {
@@ -46,6 +51,7 @@ export const tools: ToolDefinition[] = [
     acceptHint: 'JPG or PNG, up to 5 MB',
     resultKind: 'image',
     downloadLabel: 'Download image',
+    uploadKind: 'image',
   },
   {
     id: 'compress-pdf',
@@ -53,8 +59,13 @@ export const tools: ToolDefinition[] = [
     categorySlug: 'compress',
     name: 'Compress PDF',
     tagline: 'Get a PDF under the size limit for uploads and email.',
-    status: 'soon',
+    status: 'live',
     popular: true,
+    accept: 'application/pdf,.pdf',
+    acceptHint: 'PDF, up to 50 MB',
+    resultKind: 'pdf',
+    downloadLabel: 'Download compressed PDF',
+    uploadKind: 'pdf',
   },
   {
     id: 'heic-to-jpg',
@@ -68,6 +79,7 @@ export const tools: ToolDefinition[] = [
     acceptHint: 'HEIC or HEIF, up to 5 MB',
     resultKind: 'image',
     downloadLabel: 'Download JPG',
+    uploadKind: 'image',
   },
   {
     id: 'image-to-pdf',
@@ -81,6 +93,7 @@ export const tools: ToolDefinition[] = [
     acceptHint: 'JPG or PNG, up to 5 MB',
     resultKind: 'pdf',
     downloadLabel: 'Download PDF',
+    uploadKind: 'image',
   },
   {
     id: 'merge-pdf',
@@ -88,8 +101,13 @@ export const tools: ToolDefinition[] = [
     categorySlug: 'documents',
     name: 'Merge PDF',
     tagline: 'Combine scanned pages into one file.',
-    status: 'soon',
+    status: 'live',
     popular: true,
+    accept: 'application/pdf,.pdf',
+    acceptHint: 'PDF files, up to 50 MB each',
+    resultKind: 'pdf',
+    downloadLabel: 'Download merged PDF',
+    multiFile: true,
   },
   {
     id: 'passport-photo',
@@ -102,6 +120,7 @@ export const tools: ToolDefinition[] = [
     acceptHint: 'JPG or PNG · center-cropped to 600×600px',
     resultKind: 'image',
     downloadLabel: 'Download photo',
+    uploadKind: 'image',
   },
   {
     id: 'image-to-text',

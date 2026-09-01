@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { DropZone } from '../components/DropZone';
+import { MultiFileDropZone } from '../components/MultiFileDropZone';
 import { TicketStub } from '../components/TicketStub';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTaskApi } from '../hooks/useTaskApi';
@@ -17,7 +18,7 @@ export const ToolPage: React.FC = () => {
   const tool = categorySlug && toolSlug ? getTool(categorySlug, toolSlug) : undefined;
   const category = categories.find((c) => c.slug === categorySlug);
 
-  const { submitImageTask, getStatus, getResult, baseUrl } = useTaskApi();
+  const { submitImageTask, submitPdfTask, submitMergeTask, getStatus, getResult, baseUrl } = useTaskApi();
 
   const [state, setState] = useState<FlowState>('idle');
   const [fileName, setFileName] = useState('');
@@ -69,7 +70,7 @@ export const ToolPage: React.FC = () => {
   );
 
   const handleFile = useCallback(
-    async (file: File, taskId: string) => {
+    async (file: File, tool: { id: string; uploadKind?: 'image' | 'pdf' }) => {
       setFileName(file.name);
       setOriginalSize(file.size);
       setState('uploading');
@@ -77,9 +78,10 @@ export const ToolPage: React.FC = () => {
 
       try {
         const formData = new FormData();
-        formData.append('type', taskId);
+        formData.append('type', tool.id);
         formData.append('file', file);
-        const response = await submitImageTask(formData);
+        const submitFn = tool.uploadKind === 'pdf' ? submitPdfTask : submitImageTask;
+        const response = await submitFn(formData);
         setState('processing');
         pollCount.current = 0;
         void pollStatus(response.taskId);
@@ -88,7 +90,30 @@ export const ToolPage: React.FC = () => {
         setState('error');
       }
     },
-    [submitImageTask, pollStatus],
+    [submitImageTask, submitPdfTask, pollStatus],
+  );
+
+  const handleMergeSubmit = useCallback(
+    async (files: File[]) => {
+      setFileName(`${files.length} PDFs`);
+      setOriginalSize(files.reduce((sum, f) => sum + f.size, 0));
+      setState('uploading');
+      setErrorMessage('');
+
+      try {
+        const formData = new FormData();
+        formData.append('type', 'merge-pdf');
+        files.forEach((file) => formData.append('files', file));
+        const response = await submitMergeTask(formData);
+        setState('processing');
+        pollCount.current = 0;
+        void pollStatus(response.taskId);
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to submit files.');
+        setState('error');
+      }
+    },
+    [submitMergeTask, pollStatus],
   );
 
   if (!category || !tool) {
@@ -129,14 +154,25 @@ export const ToolPage: React.FC = () => {
         </div>
       )}
 
-      {isLive && state === 'idle' && (
+      {isLive && state === 'idle' && tool.multiFile && (
+        <MultiFileDropZone
+          accept={tool.accept!}
+          hint={tool.acceptHint}
+          submitLabel={(count) => `Merge ${count} file${count === 1 ? '' : 's'}`}
+          onSubmit={(files) => {
+            void handleMergeSubmit(files);
+          }}
+        />
+      )}
+
+      {isLive && state === 'idle' && !tool.multiFile && (
         <div className="max-w-xl">
           <DropZone
             accept={tool.accept!}
-            label={`Drop a file, or click to browse`}
+            label="Drop a file, or click to browse"
             hint={tool.acceptHint}
             onFileSelected={(file) => {
-              void handleFile(file, tool.id);
+              void handleFile(file, tool);
             }}
           />
         </div>
@@ -146,7 +182,7 @@ export const ToolPage: React.FC = () => {
         <div className="flex max-w-xl flex-col items-center gap-3 rounded-[10px] border border-line bg-panel px-8 py-16 text-center">
           <LoadingSpinner size="md" />
           <p className="font-body text-sm text-muted">
-            {state === 'uploading' ? 'Uploading your file…' : `Working on ${fileName}…`}
+            {state === 'uploading' ? 'Uploading…' : `Working on ${fileName}…`}
           </p>
         </div>
       )}
@@ -180,7 +216,7 @@ export const ToolPage: React.FC = () => {
             onClick={reset}
             className="font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
           >
-            Do another file
+            Do another
           </button>
         </div>
       )}

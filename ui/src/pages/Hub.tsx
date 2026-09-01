@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FileStack, Scissors, Sparkles, Wand2 } from 'lucide-react';
 import { SearchBar } from '../components/SearchBar';
 import { ToolCard } from '../components/ToolCard';
 import { CategoryWidget } from '../components/CategoryWidget';
@@ -17,18 +18,57 @@ export const Hub: React.FC = () => {
 
   return (
     <div>
-      <section className="pb-8 pt-10">
-        <span className="mb-5 inline-block rounded-[4px] bg-accent-bg px-2.5 py-1 font-mono text-xs uppercase tracking-wider text-accent-ink">
-          Everyday file tools
-        </span>
-        <h1 className="mb-4 max-w-xl font-display text-5xl font-bold leading-[1.05] tracking-tight text-ink">
-          Drop a file. Get it done.
-        </h1>
-        <p className="mb-8 max-w-lg text-lg leading-relaxed text-muted">
-          Compress, convert, and fix the everyday files that get in your way — no signup, no software, no
-          nonsense.
-        </p>
-        <SearchBar value={query} onChange={setQuery} placeholder='Search tools — try "compress" or "passport photo"' />
+      <section className="relative overflow-hidden pb-8 pt-10">
+        {/* Soft accent glow + faint scattered category icons - purely decorative,
+            gives the hero some depth without competing with the copy or search. */}
+        <div
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent opacity-[0.08] blur-3xl"
+          aria-hidden="true"
+        />
+        <Scissors
+          className="pointer-events-none absolute right-6 top-2 -rotate-12 text-accent opacity-[0.07]"
+          size={64}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+        <Wand2
+          className="pointer-events-none absolute right-40 top-24 rotate-12 text-convert opacity-[0.07]"
+          size={44}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+        <FileStack
+          className="pointer-events-none absolute right-16 top-40 -rotate-6 text-stamp opacity-[0.07]"
+          size={50}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+        <Sparkles
+          className="pointer-events-none absolute right-64 top-4 rotate-6 text-ocr opacity-[0.07]"
+          size={36}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+
+        <div className="relative">
+          <span className="mb-5 inline-block rounded-[4px] bg-accent-bg px-2.5 py-1 font-mono text-xs uppercase tracking-wider text-accent-ink">
+            Everyday file tools
+          </span>
+          <h1 className="mb-4 max-w-xl font-display text-5xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
+            Drop a file.
+            <br />
+            Get it done.
+          </h1>
+          <p className="mb-8 max-w-lg text-lg leading-relaxed text-muted">
+            Compress, convert, and fix the everyday files that get in your way — no signup, no software, no
+            nonsense.
+          </p>
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder='Search tools — try "compress" or "passport photo"'
+          />
+        </div>
       </section>
 
       {filteredTools ? (

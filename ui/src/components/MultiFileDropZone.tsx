@@ -57,15 +57,21 @@ export const MultiFileDropZone: React.FC<MultiFileDropZoneProps> = ({
           addFiles(event.dataTransfer.files);
         }}
         onClick={() => !disabled && inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-8 py-12 text-center transition-colors ${
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-8 py-12 text-center transition-all duration-200 ${
           disabled
             ? 'cursor-not-allowed border-line bg-panel opacity-60'
             : isDragging
-              ? 'border-accent bg-accent-bg'
-              : 'border-line bg-panel hover:border-accent'
+              ? 'scale-[1.01] border-accent bg-accent-bg shadow-[0_0_0_6px_rgba(42,70,232,0.08)]'
+              : 'border-line bg-panel hover:border-accent hover:bg-panel-2'
         }`}
       >
-        <UploadCloud size={28} className="mb-3 text-muted" aria-hidden="true" />
+        <div
+          className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 ${
+            isDragging ? 'scale-110 bg-accent text-white' : 'bg-accent-bg text-accent-ink'
+          }`}
+        >
+          <UploadCloud size={22} strokeWidth={2} aria-hidden="true" />
+        </div>
         <p className="mb-1 font-body text-[15px] font-medium text-ink">Drop files here, or click to add</p>
         {hint && <p className="font-mono text-[12px] text-muted">{hint}</p>}
         <input
@@ -84,7 +90,7 @@ export const MultiFileDropZone: React.FC<MultiFileDropZoneProps> = ({
           {files.map((file, index) => (
             <li
               key={`${file.name}-${index}`}
-              className="flex items-center justify-between rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink"
+              className="flex items-center justify-between rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink transition-colors hover:bg-panel-2"
             >
               <span className="flex min-w-0 items-center gap-2">
                 <FileText size={14} className="shrink-0 text-muted" aria-hidden="true" />
@@ -107,7 +113,7 @@ export const MultiFileDropZone: React.FC<MultiFileDropZoneProps> = ({
         type="button"
         disabled={disabled || files.length < minFiles}
         onClick={() => onSubmit(files)}
-        className="mt-4 w-full rounded-md bg-accent py-2.5 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-4 w-full rounded-md bg-accent py-2.5 font-body text-sm font-semibold text-white shadow-[0_6px_16px_-6px_rgba(42,70,232,0.6)] transition-all duration-150 hover:scale-[1.01] hover:opacity-95 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:scale-100"
       >
         {files.length < minFiles ? `Add at least ${minFiles} files` : submitLabel(files.length)}
       </button>

@@ -94,7 +94,7 @@ coverage/
 .env
 .env.*.local
 *.local.env
-
+local.settings.json
 # Lock files (optional: ignore if you don’t want them committed)
 # package-lock.json
 # yarn.lock

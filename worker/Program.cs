@@ -5,7 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Syncfusion.Licensing;
-// Must be called before creating any Syncfusion objects
+
+// This is just a fake key, it will most probably not work. I just used this for testing/experimental purposes.
 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Ngo9BigBOggjHTQxAR8/V1JAaF1cX2hLflFwWGNQYl53ZFRCalhSTnRaSV9jS3hTfkZiWHtac3ZQR2JcWE91Ww==");
 var host = new HostBuilder()
     .ConfigureAppConfiguration((context, config) =>

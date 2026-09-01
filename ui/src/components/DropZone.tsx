@@ -41,15 +41,21 @@ export const DropZone: React.FC<DropZoneProps> = ({ accept, label, hint, onFileS
         handleFiles(event.dataTransfer.files);
       }}
       onClick={() => !disabled && inputRef.current?.click()}
-      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-8 py-16 text-center transition-colors ${
+      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-8 py-16 text-center transition-all duration-200 ${
         disabled
           ? 'cursor-not-allowed border-line bg-panel opacity-60'
           : isDragging
-            ? 'border-accent bg-accent-bg'
-            : 'border-line bg-panel hover:border-accent'
+            ? 'scale-[1.01] border-accent bg-accent-bg shadow-[0_0_0_6px_rgba(42,70,232,0.08)]'
+            : 'border-line bg-panel hover:border-accent hover:bg-panel-2'
       }`}
     >
-      <UploadCloud size={28} className="mb-3 text-muted" aria-hidden="true" />
+      <div
+        className={`mb-4 flex h-14 w-14 items-center justify-center rounded-full transition-all duration-200 ${
+          isDragging ? 'scale-110 bg-accent text-white' : 'animate-float-slow bg-accent-bg text-accent-ink'
+        }`}
+      >
+        <UploadCloud size={24} strokeWidth={2} aria-hidden="true" />
+      </div>
       <p className="mb-1 font-body text-[15px] font-medium text-ink">{label}</p>
       {hint && <p className="font-mono text-[12px] text-muted">{hint}</p>}
       <input

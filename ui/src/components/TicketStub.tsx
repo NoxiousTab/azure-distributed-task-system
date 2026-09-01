@@ -1,4 +1,5 @@
 import React from 'react';
+import { Download } from 'lucide-react';
 
 interface TicketStubProps {
   filename: string;
@@ -17,7 +18,7 @@ export const TicketStub: React.FC<TicketStubProps> = ({
   downloadUrl,
   downloadLabel,
 }) => (
-  <div className="w-full max-w-sm overflow-hidden rounded-[10px] border border-line bg-panel">
+  <div className="animate-stub-in w-full max-w-sm -rotate-[0.6deg] overflow-hidden rounded-[10px] border border-line bg-panel shadow-[0_2px_0_rgba(20,23,26,0.04),0_20px_36px_-18px_rgba(20,23,26,0.4)]">
     <div
       className="h-3"
       style={{
@@ -44,8 +45,9 @@ export const TicketStub: React.FC<TicketStubProps> = ({
       <a
         href={downloadUrl}
         download
-        className="block w-full rounded-md bg-accent py-2.5 text-center font-body text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        className="flex w-full items-center justify-center gap-2 rounded-md bg-accent py-2.5 text-center font-body text-sm font-semibold text-white shadow-[0_6px_16px_-6px_rgba(42,70,232,0.6)] transition-transform duration-150 hover:scale-[1.02] hover:opacity-95 active:scale-[0.99]"
       >
+        <Download size={15} strokeWidth={2.3} aria-hidden="true" />
         {downloadLabel}
       </a>
     </div>

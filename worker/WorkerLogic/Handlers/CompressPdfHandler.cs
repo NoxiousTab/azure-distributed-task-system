@@ -38,16 +38,15 @@ public class CompressPdfHandler : ITaskHandler
                 // cleanup, and metadata removal, on top of image downsampling and
                 // recompression. That means it actually helps text-heavy PDFs, not
                 // just scanned/image-heavy ones.
-                var compressionOptions = new PdfCompressionOptions {
+                var compressionOptions = new PdfCompressionOptions
+                {
                     CompressImages = true,
                     ImageQuality = 50,
                     OptimizeFont = true,
                     OptimizePageContents = true,
                     RemoveMetadata = true
                 };
-
                 loadedDocument.Compress(compressionOptions);
-
 
                 // Forces a full rewrite of the file instead of an incremental save,
                 // which by itself can meaningfully shrink PDFs that have been

@@ -1,4 +1,4 @@
-export type TaskType = 'summarize' | 'markdown-to-html' | 'compress-image';
+export type TaskType = 'summarize' | 'markdown-to-html' | 'compress-image' | 'image-to-text';
 
 export interface SubmitTaskRequestDto {
   type: TaskType;
@@ -33,6 +33,10 @@ export interface TaskResultDto {
   originalSizeBytes?: number;
   compressedSizeBytes?: number;
   compressionRatio?: number;
+  // For image-to-text
+  text?: string;
+  characterCount?: number;
+  confidence?: number;
   // Allow backend to add extra fields without breaking the UI.
   [key: string]: unknown;
 }

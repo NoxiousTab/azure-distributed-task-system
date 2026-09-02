@@ -62,6 +62,7 @@ public class TaskController : ControllerBase
         "heic-to-jpg",
         "image-to-pdf",
         "passport-photo",
+        "image-to-text",
     };
 
     private static readonly Dictionary<string, string[]> AllowedContentTypesByType = new(StringComparer.OrdinalIgnoreCase)
@@ -69,6 +70,7 @@ public class TaskController : ControllerBase
         ["compress-image"] = new[] { "image/jpeg", "image/png" },
         ["image-to-pdf"] = new[] { "image/jpeg", "image/png" },
         ["passport-photo"] = new[] { "image/jpeg", "image/png" },
+        ["image-to-text"] = new[] { "image/jpeg", "image/png" },
         // Browsers are inconsistent about the content-type they report for HEIC files -
         // some send image/heic, others fall back to application/octet-stream. The
         // filename extension check below is the more reliable signal for this one.

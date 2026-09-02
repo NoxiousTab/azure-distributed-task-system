@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { DropZone } from '../components/DropZone';
 import { MultiFileDropZone } from '../components/MultiFileDropZone';
 import { TicketStub } from '../components/TicketStub';
+import { TextResultCard } from '../components/TextResultCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useTaskApi } from '../hooks/useTaskApi';
 import { categories, getTool } from '../data/tools';
@@ -23,7 +24,12 @@ export const ToolPage: React.FC = () => {
   const [state, setState] = useState<FlowState>('idle');
   const [fileName, setFileName] = useState('');
   const [originalSize, setOriginalSize] = useState(0);
-  const [result, setResult] = useState<{ taskId: string; outputSizeBytes: number } | null>(null);
+  const [result, setResult] = useState<{
+    taskId: string;
+    outputSizeBytes: number;
+    text?: string;
+    confidence?: number;
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const pollCount = useRef(0);
 
@@ -40,10 +46,19 @@ export const ToolPage: React.FC = () => {
         const status = await getStatus(taskId);
         if (status.status === 'completed') {
           const resultData = await getResult(taskId);
-          setResult({
-            taskId,
-            outputSizeBytes: Number(resultData.compressedSizeBytes ?? 0),
-          });
+          if (tool?.resultKind === 'text') {
+            setResult({
+              taskId,
+              outputSizeBytes: 0,
+              text: resultData.text ?? '',
+              confidence: resultData.confidence,
+            });
+          } else {
+            setResult({
+              taskId,
+              outputSizeBytes: Number(resultData.compressedSizeBytes ?? 0),
+            });
+          }
           setState('done');
           return;
         }
@@ -66,7 +81,7 @@ export const ToolPage: React.FC = () => {
         setState('error');
       }
     },
-    [getStatus, getResult],
+    [getStatus, getResult, tool],
   );
 
   const handleFile = useCallback(
@@ -201,7 +216,25 @@ export const ToolPage: React.FC = () => {
         </div>
       )}
 
-      {isLive && state === 'done' && result && (
+      {isLive && state === 'done' && result && tool.resultKind === 'text' && (
+        <div className="flex flex-col items-start gap-4">
+          <TextResultCard
+            filename={fileName}
+            text={result.text ?? ''}
+            confidence={result.confidence}
+            downloadLabel={tool.downloadLabel ?? 'Download .txt'}
+          />
+          <button
+            type="button"
+            onClick={reset}
+            className="font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
+          >
+            Do another
+          </button>
+        </div>
+      )}
+
+      {isLive && state === 'done' && result && tool.resultKind !== 'text' && (
         <div className="flex flex-col items-start gap-4">
           <TicketStub
             filename={fileName}

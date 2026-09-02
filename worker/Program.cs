@@ -43,6 +43,7 @@ var host = new HostBuilder()
         services.AddSingleton<ITaskHandler, PassportPhotoHandler>();
         services.AddSingleton<ITaskHandler, MergePdfHandler>();
         services.AddSingleton<ITaskHandler, CompressPdfHandler>();
+        services.AddSingleton<ITaskHandler, ImageToTextHandler>();
         services.AddSingleton<TaskHandlerRegistry>();
 
         services.AddSingleton<ITaskProcessorService, TaskProcessorService>();

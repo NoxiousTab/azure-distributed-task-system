@@ -1,9 +1,45 @@
 import React, { useMemo, useState } from 'react';
-import { FileStack, Scissors, Sparkles, Wand2 } from 'lucide-react';
+import { FileStack, Scissors, Sparkles, Wand2, UploadCloud, Settings2, Download, MousePointerClick, Ban, Gauge } from 'lucide-react';
 import { SearchBar } from '../components/SearchBar';
 import { ToolCard } from '../components/ToolCard';
 import { CategoryWidget } from '../components/CategoryWidget';
 import { categories, tools, popularTools } from '../data/tools';
+
+const steps = [
+  {
+    icon: UploadCloud,
+    title: 'Drop your file',
+    description: 'Pick a tool, then drag a file in or click to browse. Nothing to install.',
+  },
+  {
+    icon: Settings2,
+    title: 'We process it',
+    description: 'Your file goes through a short processing queue — usually a few seconds.',
+  },
+  {
+    icon: Download,
+    title: 'Download the result',
+    description: 'Grab the finished file straight from the browser. That\u2019s it.',
+  },
+];
+
+const reasons = [
+  {
+    icon: MousePointerClick,
+    title: 'No signup',
+    description: 'No account, no email, no password to lose. Use a tool and go.',
+  },
+  {
+    icon: Ban,
+    title: 'No software',
+    description: 'Runs entirely in the browser tab you already have open.',
+  },
+  {
+    icon: Gauge,
+    title: 'Free, no catch',
+    description: 'Every tool here is free to use, with no premium tier hiding basic features.',
+  },
+];
 
 export const Hub: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -100,7 +136,7 @@ export const Hub: React.FC = () => {
             </div>
           </section>
 
-          <section>
+          <section className="mb-16">
             <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-ink">
               Browse by category
             </h2>
@@ -111,6 +147,45 @@ export const Hub: React.FC = () => {
                   category={category}
                   tools={tools.filter((tool) => tool.categorySlug === category.slug)}
                 />
+              ))}
+            </div>
+          </section>
+
+          <section className="mb-16 border-t border-line pt-14">
+            <h2 className="mb-8 font-display text-sm font-semibold uppercase tracking-wide text-ink">
+              How it works
+            </h2>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+              {steps.map((step, index) => (
+                <div key={step.title} className="relative">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-[8px] bg-accent-bg text-accent-ink">
+                    <step.icon size={19} strokeWidth={2} aria-hidden="true" />
+                  </div>
+                  <div className="mb-1.5 flex items-baseline gap-2">
+                    <span className="font-mono text-xs text-muted">0{index + 1}</span>
+                    <h3 className="font-display text-base font-semibold text-ink">{step.title}</h3>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[10px] border border-line bg-panel px-6 py-10 sm:px-10">
+            <h2 className="mb-8 font-display text-sm font-semibold uppercase tracking-wide text-ink">
+              Why toolslip
+            </h2>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+              {reasons.map((reason) => (
+                <div key={reason.title} className="flex items-start gap-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-panel-2 text-ink">
+                    <reason.icon size={17} strokeWidth={2} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h3 className="mb-1 font-display text-sm font-semibold text-ink">{reason.title}</h3>
+                    <p className="text-[13px] leading-relaxed text-muted">{reason.description}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </section>

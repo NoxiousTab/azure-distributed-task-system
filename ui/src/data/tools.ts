@@ -1,5 +1,5 @@
 export type ToolStatus = 'live' | 'soon';
-export type ResultKind = 'image' | 'pdf';
+export type ResultKind = 'image' | 'pdf' | 'text';
 
 export interface ToolDefinition {
   id: string;
@@ -128,7 +128,12 @@ export const tools: ToolDefinition[] = [
     categorySlug: 'ocr',
     name: 'Image to text',
     tagline: 'Pull editable text out of a scanned document.',
-    status: 'soon',
+    status: 'live',
+    accept: 'image/jpeg,image/png',
+    acceptHint: 'JPG or PNG, up to 5 MB · works best on clear, well-lit scans',
+    resultKind: 'text',
+    downloadLabel: 'Download .txt',
+    uploadKind: 'image',
   },
 ];
 

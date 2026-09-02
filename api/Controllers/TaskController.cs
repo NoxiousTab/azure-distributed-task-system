@@ -223,10 +223,13 @@ public class TaskController : ControllerBase
         }
     }
 
-    [HttpPost("submit-pdf-task")]
+        [HttpPost("submit-pdf-task")]
     [RequestSizeLimit(50 * 1024 * 1024)]
-    public async Task<ActionResult<SubmitTaskResponse>> SubmitPdfTask([FromForm] string type, [FromForm] IFormFile file, CancellationToken cancellationToken)
-    {
+    public async Task<ActionResult<SubmitTaskResponse>> SubmitPdfTask(
+        [FromForm] string type,
+        [FromForm] IFormFile file,
+        [FromForm] string? compressionLevel,
+        CancellationToken cancellationToken){
         if (string.IsNullOrWhiteSpace(type) || !type.Trim().Equals("compress-pdf", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest("type must be 'compress-pdf'.");
@@ -261,7 +264,8 @@ public class TaskController : ControllerBase
             {
                 taskId,
                 Type = "compress-pdf",
-                Base64Pdf = base64Pdf
+                Base64Pdf = base64Pdf,
+                CompressionLevel = compressionLevel
             }, cancellationToken);
 
             var queuePayload = new

@@ -1,6 +1,12 @@
 export type ToolStatus = 'live' | 'soon';
 export type ResultKind = 'image' | 'pdf' | 'text';
 
+export interface ToolConfigOption {
+  id: string;
+  label: string;
+  description: string;
+}
+
 export interface ToolDefinition {
   id: string;
   slug: string;
@@ -9,16 +15,17 @@ export interface ToolDefinition {
   tagline: string;
   status: ToolStatus;
   popular?: boolean;
-  // Only present for 'live' tools - drives the upload + result flow in ToolPage.
   accept?: string;
   acceptHint?: string;
   resultKind?: ResultKind;
   downloadLabel?: string;
-  // Which single-file endpoint this tool uses. Irrelevant when multiFile is true.
   uploadKind?: 'image' | 'pdf';
-  // When true, this tool takes multiple files at once (e.g. merge-pdf) and
-  // uses MultiFileDropZone + submitMergeTask instead of the single-file flow.
   multiFile?: boolean;
+  // When present, ToolPage shows a "configure" step after upload and before
+  // submitting - the chosen option's id is sent as `compressionLevel` in the
+  // submit form data (currently the only config field the API accepts).
+  configOptions?: ToolConfigOption[];
+  defaultConfigOptionId?: string;
 }
 
 export interface CategoryDefinition {
@@ -66,6 +73,12 @@ export const tools: ToolDefinition[] = [
     resultKind: 'pdf',
     downloadLabel: 'Download compressed PDF',
     uploadKind: 'pdf',
+    configOptions: [
+      { id: 'low', label: 'Low compression', description: 'Best quality' },
+      { id: 'recommended', label: 'Recommended', description: 'Balanced' },
+      { id: 'maximum', label: 'Maximum compression', description: 'Smallest file' },
+    ],
+    defaultConfigOptionId: 'recommended',
   },
   {
     id: 'heic-to-jpg',

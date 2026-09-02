@@ -1,18 +1,26 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { DropZone } from '../components/DropZone';
 import { MultiFileDropZone } from '../components/MultiFileDropZone';
 import { TicketStub } from '../components/TicketStub';
 import { TextResultCard } from '../components/TextResultCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { ToolConfigOptions } from '../components/ToolConfigOptions';
 import { useTaskApi } from '../hooks/useTaskApi';
 import { categories, getTool } from '../data/tools';
+import { toFriendlyError, type FriendlyError } from '../utils/errors';
 
-type FlowState = 'idle' | 'uploading' | 'processing' | 'done' | 'error';
+type FlowState = 'idle' | 'configuring' | 'uploading' | 'processing' | 'done' | 'error';
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 30;
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export const ToolPage: React.FC = () => {
   const { categorySlug, toolSlug } = useParams<{ categorySlug: string; toolSlug: string }>();
@@ -22,6 +30,8 @@ export const ToolPage: React.FC = () => {
   const { submitImageTask, submitPdfTask, submitMergeTask, getStatus, getResult, baseUrl } = useTaskApi();
 
   const [state, setState] = useState<FlowState>('idle');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [configOptionId, setConfigOptionId] = useState('');
   const [fileName, setFileName] = useState('');
   const [originalSize, setOriginalSize] = useState(0);
   const [result, setResult] = useState<{
@@ -30,13 +40,14 @@ export const ToolPage: React.FC = () => {
     text?: string;
     confidence?: number;
   } | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState<FriendlyError | null>(null);
   const pollCount = useRef(0);
 
   const reset = (): void => {
     setState('idle');
+    setPendingFile(null);
     setResult(null);
-    setErrorMessage('');
+    setError(null);
     pollCount.current = 0;
   };
 
@@ -63,13 +74,16 @@ export const ToolPage: React.FC = () => {
           return;
         }
         if (status.status === 'failed') {
-          setErrorMessage(status.errorMessage || 'Something went wrong while processing this file.');
+          setError(toFriendlyError(status.errorMessage || ''));
           setState('error');
           return;
         }
         pollCount.current += 1;
         if (pollCount.current > MAX_POLLS) {
-          setErrorMessage('This is taking longer than expected. Try again in a moment.');
+          setError({
+            title: 'This is taking a while',
+            message: 'Still working on it — try checking back again in a moment.',
+          });
           setState('error');
           return;
         }
@@ -77,43 +91,65 @@ export const ToolPage: React.FC = () => {
           void pollStatus(taskId);
         }, POLL_INTERVAL_MS);
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to check status.');
+        setError(toFriendlyError(err instanceof Error ? err.message : ''));
         setState('error');
       }
     },
     [getStatus, getResult, tool],
   );
 
-  const handleFile = useCallback(
-    async (file: File, tool: { id: string; uploadKind?: 'image' | 'pdf' }) => {
+  const submitFile = useCallback(
+    async (file: File, currentTool: { id: string; uploadKind?: 'image' | 'pdf' }, compressionLevel?: string) => {
       setFileName(file.name);
       setOriginalSize(file.size);
       setState('uploading');
-      setErrorMessage('');
+      setError(null);
 
       try {
         const formData = new FormData();
-        formData.append('type', tool.id);
+        formData.append('type', currentTool.id);
         formData.append('file', file);
-        const submitFn = tool.uploadKind === 'pdf' ? submitPdfTask : submitImageTask;
+        if (compressionLevel) {
+          formData.append('compressionLevel', compressionLevel);
+        }
+        const submitFn = currentTool.uploadKind === 'pdf' ? submitPdfTask : submitImageTask;
         const response = await submitFn(formData);
         setState('processing');
         pollCount.current = 0;
         void pollStatus(response.taskId);
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to submit file.');
+        setError(toFriendlyError(err instanceof Error ? err.message : ''));
         setState('error');
       }
     },
     [submitImageTask, submitPdfTask, pollStatus],
   );
 
+  const handleFileSelected = useCallback(
+    (file: File) => {
+      if (!tool) return;
+      if (tool.configOptions && tool.configOptions.length > 0) {
+        setPendingFile(file);
+        setConfigOptionId(tool.defaultConfigOptionId ?? tool.configOptions[0].id);
+        setState('configuring');
+        return;
+      }
+      void submitFile(file, tool);
+    },
+    [tool, submitFile],
+  );
+
+  const handleConfirmConfig = useCallback(() => {
+    if (!pendingFile || !tool) return;
+    void submitFile(pendingFile, tool, configOptionId);
+  }, [pendingFile, tool, configOptionId, submitFile]);
+
   const handleMergeSubmit = useCallback(
     async (files: File[]) => {
       setFileName(`${files.length} PDFs`);
       setOriginalSize(files.reduce((sum, f) => sum + f.size, 0));
       setState('uploading');
-      setErrorMessage('');
+      setError(null);
 
       try {
         const formData = new FormData();
@@ -124,7 +160,7 @@ export const ToolPage: React.FC = () => {
         pollCount.current = 0;
         void pollStatus(response.taskId);
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to submit files.');
+        setError(toFriendlyError(err instanceof Error ? err.message : ''));
         setState('error');
       }
     },
@@ -152,7 +188,7 @@ export const ToolPage: React.FC = () => {
     <div className="pt-8">
       <Link
         to={`/category/${category.slug}`}
-        className="mb-6 inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
+        className="mb-6 inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wide text-muted transition-colors hover:text-ink"
       >
         <ArrowLeft size={13} aria-hidden="true" /> {category.name}
       </Link>
@@ -186,10 +222,44 @@ export const ToolPage: React.FC = () => {
             accept={tool.accept!}
             label="Drop a file, or click to browse"
             hint={tool.acceptHint}
-            onFileSelected={(file) => {
-              void handleFile(file, tool);
-            }}
+            onFileSelected={handleFileSelected}
           />
+        </div>
+      )}
+
+      {isLive && state === 'configuring' && pendingFile && tool.configOptions && (
+        <div className="max-w-xl rounded-[10px] border border-line bg-panel p-6">
+          <div className="mb-5 flex items-center justify-between gap-3 border-b border-line pb-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-accent-bg text-accent-ink">
+                <FileText size={16} strokeWidth={2.1} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-body text-sm font-medium text-ink" title={pendingFile.name}>
+                  {pendingFile.name}
+                </p>
+                <p className="font-mono text-[12px] text-muted">{formatFileSize(pendingFile.size)}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={reset}
+              className="shrink-0 font-mono text-[11px] uppercase tracking-wide text-muted transition-colors hover:text-ink"
+            >
+              Change
+            </button>
+          </div>
+
+          <p className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">Compression level</p>
+          <ToolConfigOptions options={tool.configOptions} selectedId={configOptionId} onChange={setConfigOptionId} />
+
+          <button
+            type="button"
+            onClick={handleConfirmConfig}
+            className="mt-5 w-full rounded-md bg-accent py-2.5 font-body text-sm font-semibold text-white shadow-[0_6px_16px_-6px_rgba(42,70,232,0.6)] transition-transform duration-150 motion-reduce:transition-none hover:scale-[1.01] hover:opacity-95 active:scale-[0.99]"
+          >
+            {tool.name}
+          </button>
         </div>
       )}
 
@@ -202,14 +272,14 @@ export const ToolPage: React.FC = () => {
         </div>
       )}
 
-      {isLive && state === 'error' && (
+      {isLive && state === 'error' && error && (
         <div className="max-w-xl rounded-[10px] border border-line bg-panel p-8 text-center">
-          <p className="mb-1 font-display text-base font-semibold text-ink">That didn&apos;t work</p>
-          <p className="mb-4 text-sm text-muted">{errorMessage}</p>
+          <p className="mb-1 font-display text-base font-semibold text-ink">{error.title}</p>
+          <p className="mb-4 text-sm text-muted">{error.message}</p>
           <button
             type="button"
             onClick={reset}
-            className="rounded-md bg-accent px-4 py-2 font-body text-sm font-semibold text-white hover:opacity-90"
+            className="rounded-md bg-accent px-4 py-2 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90"
           >
             Try again
           </button>
@@ -227,7 +297,7 @@ export const ToolPage: React.FC = () => {
           <button
             type="button"
             onClick={reset}
-            className="font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
+            className="font-mono text-xs uppercase tracking-wide text-muted transition-colors hover:text-ink"
           >
             Do another
           </button>
@@ -247,7 +317,7 @@ export const ToolPage: React.FC = () => {
           <button
             type="button"
             onClick={reset}
-            className="font-mono text-xs uppercase tracking-wide text-muted hover:text-ink"
+            className="font-mono text-xs uppercase tracking-wide text-muted transition-colors hover:text-ink"
           >
             Do another
           </button>

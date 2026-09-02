@@ -24,3 +24,31 @@ body::before {
   position: relative;
   z-index: 1;
 }
+
+/* Global reduced-motion support: neutralizes every transition/animation/transform
+   at once rather than requiring every component to remember a motion-reduce:
+   variant. The interface should be fully usable - just static - with this on. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible keyboard focus on every interactive element, site-wide. Elements with
+   their own focus treatment (e.g. SearchBar's focus-within ring) aren't hurt by
+   this - it's additive, not a replacement. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role='button']:focus-visible,
+[role='radio']:focus-visible {
+  outline: 2px solid #2a46e8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -27,21 +27,28 @@ public class CompressPdfHandler : ITaskHandler
         var originalBytes = Convert.FromBase64String(input.Base64Pdf);
         var originalSizeBytes = originalBytes.Length;
 
+        // "low" keeps more visual quality at a bigger file size; "maximum" is the
+        // opposite trade. These numbers are Syncfusion's 0-100 JPEG-style image
+        // quality scale for the images it recompresses inside the PDF - font
+        // subsetting, content-stream cleanup, and metadata removal happen
+        // regardless of this setting.
+        var imageQuality = input.CompressionLevel?.ToLowerInvariant() switch
+        {
+            "low" => 80,
+            "maximum" => 25,
+            _ => 50, // "recommended" and any unrecognized value
+        };
+
         byte[] compressedBytes;
         using (var inputStream = new MemoryStream(originalBytes))
         {
             var loadedDocument = new PdfLoadedDocument(inputStream);
             try
             {
-                // Syncfusion's compression pipeline handles what our earlier hand-rolled
-                // PDFsharp approach couldn't: font subsetting, page content stream
-                // cleanup, and metadata removal, on top of image downsampling and
-                // recompression. That means it actually helps text-heavy PDFs, not
-                // just scanned/image-heavy ones.
                 var compressionOptions = new PdfCompressionOptions
                 {
                     CompressImages = true,
-                    ImageQuality = 50,
+                    ImageQuality = imageQuality,
                     OptimizeFont = true,
                     OptimizePageContents = true,
                     RemoveMetadata = true

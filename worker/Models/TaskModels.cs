@@ -30,6 +30,9 @@ public class TaskInput
 
     // For compress-pdf tasks
     public string? Base64Pdf { get; set; }
+    // For compress-pdf tasks - "low" | "recommended" | "maximum". Defaults to
+    // "recommended" in the handler if null/unrecognized.
+    public string? CompressionLevel { get; set; }
 }
 
 public class TaskMetadata

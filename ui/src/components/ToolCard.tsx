@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Crop, FileDown, FileImage, Image, Layers, RefreshCw, ScanText } from 'lucide-react';
+import { ArrowRight, Crop, FileDown, FileImage, Image, Layers, RefreshCw, ScanText } from 'lucide-react';
 import type { ToolDefinition } from '../data/tools';
 
 const TOOL_ICONS: Record<string, React.ElementType> = {
@@ -36,17 +36,25 @@ export const ToolCard: React.FC<{ tool: ToolDefinition }> = ({ tool }) => {
       </div>
       <h3 className="mb-1.5 font-display text-[17px] font-semibold tracking-tight text-ink">{tool.name}</h3>
       <p className="mb-3.5 text-[13.5px] leading-snug text-muted">{tool.tagline}</p>
-      {tool.status === 'live' ? (
-        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-accent-ink">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          Available now
-        </span>
-      ) : (
-        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-muted">
-          <span className="h-1.5 w-1.5 rounded-full bg-line" />
-          Coming soon
-        </span>
-      )}
+      <div className="flex items-center justify-between">
+        {tool.status === 'live' ? (
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-accent-ink">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            Available now
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-line" />
+            Coming soon
+          </span>
+        )}
+        <ArrowRight
+          size={15}
+          strokeWidth={2.2}
+          className="text-muted transition-all duration-200 motion-reduce:transition-none group-hover:translate-x-0.5 group-hover:text-accent-ink"
+          aria-hidden="true"
+        />
+      </div>
     </Link>
   );
 };

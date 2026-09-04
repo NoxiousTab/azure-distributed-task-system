@@ -1,6 +1,6 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { ArrowLeft, AlertCircle, FileText } from 'lucide-react';
 import { DropZone } from '../components/DropZone';
 import { MultiFileDropZone } from '../components/MultiFileDropZone';
 import { TicketStub } from '../components/TicketStub';
@@ -24,6 +24,7 @@ const formatFileSize = (bytes: number): string => {
 
 export const ToolPage: React.FC = () => {
   const { categorySlug, toolSlug } = useParams<{ categorySlug: string; toolSlug: string }>();
+  const location = useLocation();
   const tool = categorySlug && toolSlug ? getTool(categorySlug, toolSlug) : undefined;
   const category = categories.find((c) => c.slug === categorySlug);
 
@@ -138,6 +139,21 @@ export const ToolPage: React.FC = () => {
     },
     [tool, submitFile],
   );
+
+  // If the homepage's drop zone routed a file straight here (see Hub.tsx /
+  // getToolsForFile), pick it up and kick off the same flow as if it had been
+  // dropped on this page directly - the user shouldn't have to drop it twice.
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    const incomingFile = (location.state as { file?: File } | null)?.file;
+    if (incomingFile instanceof File && !autoSubmittedRef.current && tool) {
+      autoSubmittedRef.current = true;
+      handleFileSelected(incomingFile);
+    }
+    // Only ever run this for the file this page mounted with - deliberately
+    // not re-running on tool/handleFileSelected identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConfirmConfig = useCallback(() => {
     if (!pendingFile || !tool) return;
@@ -274,6 +290,7 @@ export const ToolPage: React.FC = () => {
 
       {isLive && state === 'error' && error && (
         <div className="max-w-xl rounded-[10px] border border-line bg-panel p-8 text-center">
+          <AlertCircle size={22} strokeWidth={1.8} className="mx-auto mb-3 text-muted" aria-hidden="true" />
           <p className="mb-1 font-display text-base font-semibold text-ink">{error.title}</p>
           <p className="mb-4 text-sm text-muted">{error.message}</p>
           <button

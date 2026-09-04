@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Crop, FileDown, FileImage, Image, Layers, RefreshCw, ScanText } from 'lucide-react';
 import type { ToolDefinition } from '../data/tools';
 
-const TOOL_ICONS: Record<string, React.ElementType> = {
+export const TOOL_ICONS: Record<string, React.ElementType> = {
   'compress-image': Image,
   'compress-pdf': FileDown,
   'heic-to-jpg': RefreshCw,
@@ -27,7 +27,7 @@ export const ToolCard: React.FC<{ tool: ToolDefinition }> = ({ tool }) => {
   return (
     <Link
       to={`/${tool.categorySlug}/${tool.slug}`}
-      className="group block rounded-[10px] border border-line bg-panel p-[18px] transition-all duration-200 hover:-translate-y-1 hover:border-accent hover:shadow-[0_12px_24px_-12px_rgba(20,23,26,0.25)]"
+      className="group block rounded-[10px] border border-line bg-panel p-[18px] shadow-[0_1px_2px_rgba(20,23,26,0.04)] transition-all duration-200 hover:-translate-y-1 hover:border-accent hover:shadow-[0_12px_24px_-12px_rgba(20,23,26,0.25)]"
     >
       <div
         className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-[8px] transition-transform duration-200 group-hover:scale-110 ${chipClass}`}

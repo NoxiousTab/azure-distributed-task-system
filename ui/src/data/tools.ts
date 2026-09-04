@@ -26,6 +26,11 @@ export interface ToolDefinition {
   // submit form data (currently the only config field the API accepts).
   configOptions?: ToolConfigOption[];
   defaultConfigOptionId?: string;
+  // File extensions (lowercase, with dot) this tool accepts, used to route a
+  // dropped file to the right tool(s) from the homepage. Only set on
+  // single-file live tools - multiFile tools (merge-pdf) are excluded since
+  // routing a single dropped file into a multi-file flow doesn't make sense.
+  matchExtensions?: string[];
 }
 
 export interface CategoryDefinition {
@@ -59,6 +64,7 @@ export const tools: ToolDefinition[] = [
     resultKind: 'image',
     downloadLabel: 'Download image',
     uploadKind: 'image',
+    matchExtensions: ['.jpg', '.jpeg', '.png'],
   },
   {
     id: 'compress-pdf',
@@ -79,6 +85,7 @@ export const tools: ToolDefinition[] = [
       { id: 'maximum', label: 'Maximum compression', description: 'Smallest file' },
     ],
     defaultConfigOptionId: 'recommended',
+    matchExtensions: ['.pdf'],
   },
   {
     id: 'heic-to-jpg',
@@ -93,6 +100,7 @@ export const tools: ToolDefinition[] = [
     resultKind: 'image',
     downloadLabel: 'Download JPG',
     uploadKind: 'image',
+    matchExtensions: ['.heic', '.heif'],
   },
   {
     id: 'image-to-pdf',
@@ -107,6 +115,7 @@ export const tools: ToolDefinition[] = [
     resultKind: 'pdf',
     downloadLabel: 'Download PDF',
     uploadKind: 'image',
+    matchExtensions: ['.jpg', '.jpeg', '.png'],
   },
   {
     id: 'merge-pdf',
@@ -134,6 +143,7 @@ export const tools: ToolDefinition[] = [
     resultKind: 'image',
     downloadLabel: 'Download photo',
     uploadKind: 'image',
+    matchExtensions: ['.jpg', '.jpeg', '.png'],
   },
   {
     id: 'image-to-text',
@@ -147,6 +157,7 @@ export const tools: ToolDefinition[] = [
     resultKind: 'text',
     downloadLabel: 'Download .txt',
     uploadKind: 'image',
+    matchExtensions: ['.jpg', '.jpeg', '.png'],
   },
 ];
 
@@ -160,3 +171,11 @@ export const getCategory = (slug: string): CategoryDefinition | undefined =>
 
 export const getTool = (categorySlug: string, toolSlug: string): ToolDefinition | undefined =>
   tools.find((tool) => tool.categorySlug === categorySlug && tool.slug === toolSlug);
+
+// Routes a dropped/picked file to the tool(s) that can handle it, by extension.
+// Used by the homepage's drop zone to jump straight to (or offer a choice of)
+// the right tool instead of making the user find it in the grid themselves.
+export const getToolsForFile = (filename: string): ToolDefinition[] => {
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+  return tools.filter((tool) => tool.status === 'live' && tool.matchExtensions?.includes(ext));
+};

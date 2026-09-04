@@ -1,15 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import { FileStack, Scissors, Sparkles, Wand2, UploadCloud, Settings2, Download, MousePointerClick, Ban, Gauge } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { UploadCloud, Settings2, Download, MousePointerClick, Ban, Gauge, ArrowRight, FileQuestion } from 'lucide-react';
 import { SearchBar } from '../components/SearchBar';
 import { ToolCard } from '../components/ToolCard';
 import { CategoryWidget } from '../components/CategoryWidget';
-import { categories, tools, popularTools } from '../data/tools';
+import { DropZone } from '../components/DropZone';
+import { TOOL_ICONS } from '../components/ToolCard';
+import { categories, tools, popularTools, getToolsForFile, type ToolDefinition } from '../data/tools';
 
 const steps = [
   {
     icon: UploadCloud,
     title: 'Drop your file',
-    description: 'Pick a tool, then drag a file in or click to browse. Nothing to install.',
+    description: 'Drop it above and we\u2019ll route you to the right tool, or pick one from the grid below.',
   },
   {
     icon: Settings2,
@@ -42,7 +45,10 @@ const reasons = [
 ];
 
 export const Hub: React.FC = () => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [pickerState, setPickerState] = useState<{ file: File; matches: ToolDefinition[] } | null>(null);
+  const [unmatchedName, setUnmatchedName] = useState<string | null>(null);
 
   const filteredTools = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -52,41 +58,28 @@ export const Hub: React.FC = () => {
     );
   }, [query]);
 
+  const handleHeroFile = useCallback(
+    (file: File) => {
+      const matches = getToolsForFile(file.name);
+      if (matches.length === 0) {
+        setPickerState(null);
+        setUnmatchedName(file.name);
+        return;
+      }
+      setUnmatchedName(null);
+      if (matches.length === 1) {
+        navigate(`/${matches[0].categorySlug}/${matches[0].slug}`, { state: { file } });
+        return;
+      }
+      setPickerState({ file, matches });
+    },
+    [navigate],
+  );
+
   return (
     <div>
-      <section className="relative overflow-hidden pb-8 pt-10">
-        {/* Soft accent glow + faint scattered category icons - purely decorative,
-            gives the hero some depth without competing with the copy or search. */}
-        <div
-          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent opacity-[0.08] blur-3xl"
-          aria-hidden="true"
-        />
-        <Scissors
-          className="pointer-events-none absolute right-6 top-2 -rotate-12 text-accent opacity-[0.07]"
-          size={64}
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-        <Wand2
-          className="pointer-events-none absolute right-40 top-24 rotate-12 text-convert opacity-[0.07]"
-          size={44}
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-        <FileStack
-          className="pointer-events-none absolute right-16 top-40 -rotate-6 text-stamp opacity-[0.07]"
-          size={50}
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-        <Sparkles
-          className="pointer-events-none absolute right-64 top-4 rotate-6 text-ocr opacity-[0.07]"
-          size={36}
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-
-        <div className="relative">
+      <section className="grid grid-cols-1 items-center gap-10 pb-14 pt-10 lg:grid-cols-[1fr_380px] lg:gap-8">
+        <div>
           <span className="mb-5 inline-block rounded-[4px] bg-accent-bg px-2.5 py-1 font-mono text-xs uppercase tracking-wider text-accent-ink">
             Everyday file tools
           </span>
@@ -99,11 +92,57 @@ export const Hub: React.FC = () => {
             Compress, convert, and fix the everyday files that get in your way — no signup, no software, no
             nonsense.
           </p>
+          <p className="mb-2.5 font-mono text-xs uppercase tracking-wide text-muted">Or search by name</p>
           <SearchBar
             value={query}
             onChange={setQuery}
-            placeholder='Search tools — try "compress" or "passport photo"'
+            placeholder='Try "compress" or "passport photo"'
           />
+        </div>
+
+        <div>
+          <DropZone
+            accept="*/*"
+            label="Drop any file"
+            hint="We'll find the right tool for it"
+            onFileSelected={handleHeroFile}
+          />
+          {pickerState && (
+            <div className="mt-3 rounded-[10px] border border-line bg-panel p-3">
+              <p className="mb-2 px-1 text-[13px] text-muted">
+                What do you want to do with <span className="font-medium text-ink">{pickerState.file.name}</span>?
+              </p>
+              <div className="flex flex-col gap-1">
+                {pickerState.matches.map((match) => {
+                  const Icon = TOOL_ICONS[match.id] ?? FileQuestion;
+                  return (
+                    <button
+                      key={match.id}
+                      type="button"
+                      onClick={() => navigate(`/${match.categorySlug}/${match.slug}`, { state: { file: pickerState.file } })}
+                      className="group flex items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-panel-2"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-accent-bg text-accent-ink">
+                        <Icon size={15} strokeWidth={2.1} aria-hidden="true" />
+                      </span>
+                      <span className="flex-1 font-body text-sm font-medium text-ink">{match.name}</span>
+                      <ArrowRight
+                        size={14}
+                        className="text-muted transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {unmatchedName && (
+            <p className="mt-3 px-1 text-[13px] text-muted">
+              We don&apos;t have a tool for <span className="font-medium text-ink">{unmatchedName}</span> yet —
+              browse everything below.
+            </p>
+          )}
         </div>
       </section>
 

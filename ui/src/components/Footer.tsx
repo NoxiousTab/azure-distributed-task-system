@@ -4,7 +4,7 @@ import { categories } from '../data/tools';
 
 export const Footer: React.FC = () => (
   <footer className="border-t border-line">
-    <div className="mx-auto max-w-5xl px-8 py-10">
+    <div className="mx-auto max-w-5xl px-5 py-10 sm:px-8">
       <div className="mb-8 flex flex-col gap-8 sm:flex-row sm:justify-between">
         <div className="max-w-xs">
           <span className="font-display text-base font-bold tracking-tight text-ink">toolslip</span>

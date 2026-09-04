@@ -30,7 +30,7 @@ export const CategoryWidget: React.FC<CategoryWidgetProps> = ({ category, tools 
   const chipClass = CATEGORY_CHIP_CLASSES[category.slug] ?? 'bg-accent-bg text-accent-ink';
 
   return (
-    <div className="rounded-[10px] border border-line bg-panel p-5 transition-shadow duration-200 hover:shadow-[0_12px_24px_-14px_rgba(20,23,26,0.2)]">
+    <div className="rounded-[10px] border border-line bg-panel p-5 shadow-[0_1px_2px_rgba(20,23,26,0.04)] transition-shadow duration-200 hover:shadow-[0_12px_24px_-14px_rgba(20,23,26,0.2)]">
       <div className="mb-4 flex items-start gap-3">
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] ${chipClass}`}>
           <Icon size={17} strokeWidth={2.1} aria-hidden="true" />
